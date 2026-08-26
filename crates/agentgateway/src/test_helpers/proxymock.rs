@@ -1194,6 +1194,9 @@ pub fn setup_proxy_test_with_config(config: crate::Config) -> TestBind {
 		ca: None,
 
 		mcp_state: mcp::App::new(stores.clone(), encoder),
+		guardrails: None,
+		vehicle_state: Default::default(),
+		circuit_breakers: None,
 	});
 	TestBind {
 		pi,

@@ -54,8 +54,8 @@ pub fn parse_config(
 	} else {
 		IpAddr::V4(Ipv4Addr::UNSPECIFIED)
 	};
-	let local_config = parse::<PathBuf>("LOCAL_XDS_PATH")?
-		.or(raw.local_xds_path)
+	let local_config = raw
+		.local_xds_path
 		.map(ConfigSource::File)
 		.or(local_config_source);
 
@@ -79,7 +79,7 @@ pub fn parse_config(
 	};
 	let cluster: String = parse("CLUSTER_ID")?
 		.or(raw.cluster_id.clone())
-		.unwrap_or("Kubernetes".to_string());
+		.unwrap_or_else(|| "default".to_string());
 	let xds = {
 		let address = validate_uri(empty_to_none(parse("XDS_ADDRESS")?).or(raw.xds_address))
 			.ctx("invalid XDS_ADDRESS/config.xdsAddress")?;
@@ -383,11 +383,8 @@ pub fn parse_config(
 		termination_max_deadline: match termination_max_deadline {
 				Some(period) => period,
 				None => match parse::<u64>("TERMINATION_GRACE_PERIOD_SECONDS")? {
-				// We want our drain period to be less than Kubernetes, so we can use the last few seconds
-				// to abruptly terminate anything remaining before Kubernetes SIGKILLs us.
-				// We could just take the SIGKILL, but it is even more abrupt (TCP RST vs RST_STREAM/TLS close, etc)
-				// Note: we do this in code instead of in configuration so that we can use downward API to expose this variable
-				// if it is added to Kubernetes (https://github.com/kubernetes/kubernetes/pull/125746).
+				// We want our drain period to be less than the termination grace period, so we can use the
+				// last few seconds to abruptly terminate anything remaining before the process is killed.
 				Some(secs) => Duration::from_secs(cmp::max(
 					if secs > 10 {
 						secs - 5

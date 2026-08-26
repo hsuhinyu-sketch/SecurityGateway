@@ -8,19 +8,10 @@ tool (
 	github.com/golang/mock/mockgen
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	github.com/google/go-containerregistry/cmd/crane
-	github.com/onsi/ginkgo/v2/ginkgo
 	github.com/rhysd/actionlint/cmd/actionlint
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 	gotest.tools/gotestsum
-	helm.sh/helm/v4/cmd/helm
-	istio.io/tools/cmd/protoc-gen-golang-jsonshim
-	k8s.io/code-generator/cmd/applyconfiguration-gen
-	k8s.io/code-generator/cmd/client-gen
-	k8s.io/code-generator/cmd/register-gen
-	k8s.io/kube-openapi/cmd/openapi-gen
-	sigs.k8s.io/controller-tools/cmd/controller-gen
-	sigs.k8s.io/kind
 )
 
 require github.com/solo-io/go-list-licenses v0.1.4

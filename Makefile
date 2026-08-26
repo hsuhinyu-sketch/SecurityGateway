@@ -80,17 +80,12 @@ check-clean-repo:
 	@tools/check_clean_repo.sh
 
 .PHONY: gen
-gen: generate-apis generate-schema format
+gen: generate-schema format
 	@:
 
 .PHONY: generate-schema
 generate-schema:
 	@cargo xtask schema
-
-# Code generation for xds apis
-.PHONY: generate-apis
-generate-apis:
-	@PATH="./common/tools:$(PATH)" buf generate --path crates/protos/proto/resource.proto --path crates/protos/proto/ext_mcp.proto
 
 .PHONY: run-validation-deps
 run-validation-deps:

@@ -53,7 +53,7 @@
   Enable secure agent-to-agent communication using A2A, with capability discovery, modality negotiation, and task collaboration.
 
 - **Inference Routing**<br>
-  Intelligent routing to self-hosted models using Kubernetes Inference Gateway extensions, with decisions based on GPU utilization, KV cache, LoRA adapters, and queue depth.
+  Intelligent routing to self-hosted models, with decisions based on GPU utilization, KV cache, LoRA adapters, and queue depth.
 
 - **Guardrails**<br>
   Multi-layered content filtering with regex, OpenAI moderation, AWS Bedrock Guardrails, Google Model Armor, and custom webhooks.
@@ -65,14 +65,12 @@
 ## Getting Started
 
 - [Standalone Quickstart](https://agentgateway.dev/docs/quickstart) — Get started with agentgateway in minutes.
-- [Kubernetes Quickstart](https://agentgateway.dev/docs/kubernetes/latest) — Deploy on Kubernetes using the built-in controller and Gateway API.
 
 ## Documentation
 
-Depending on your deployment environment, check out the following docs:
+Check out the docs:
 
 - [agentgateway.dev/docs](https://agentgateway.dev/docs/): For standalone deployments such as local or on-prem. These docs are for this upstream `agentgateway/agentgateway` GitHub project.
-- [agentgateway.dev/docs/kubernetes/latest](https://agentgateway.dev/docs/kubernetes/latest): For Kubernetes-based deployments using the built-in Kubernetes controller and Gateway API support.
 
 Agentgateway has a built-in UI for you to explore agentgateway connecting agent-to-agent or agent-to-tool:
 

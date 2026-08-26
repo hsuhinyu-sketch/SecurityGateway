@@ -10,8 +10,8 @@
 //!     An invalid backend may always return a 5xx error. A bad ext_authz config may allow or deny all requests, following
 //!     configured `failureMode` semantics.
 //! * If something is entirely invalid, such as sending an unknown enum, etc, we currently treat these as errors.
-//! * We aim to generally specialize for the native Go agentgateway control plane. What may be impossible
-//!   to happen in Agentgateway's controller may be possible with a third-party controller which may
+//! * We aim to generally specialize for the native agentgateway control plane. What may be impossible
+//!   to happen in Agentgateway's control plane may be possible with a third-party control plane which may
 //!   make the error/warning distinction not fully respected.
 
 use std::collections::HashMap;

@@ -160,14 +160,6 @@ pub(crate) fn read_config_contents(
 			Ok((contents, Some(source)))
 		},
 		(None, None) => {
-			if running_in_kubernetes() && std::env::var_os("LOCAL_XDS_PATH").is_none() {
-				anyhow::bail!(
-					"configuration is required when running in Kubernetes; pass --config, --file, or set LOCAL_XDS_PATH"
-				);
-			}
-			if std::env::var_os("LOCAL_XDS_PATH").is_some() {
-				return Ok(("{}".to_string(), None));
-			}
 			let dir = default_config_dir()?;
 			let file = dir.join("config.yaml");
 			ensure_default_config_file(&file)?;
@@ -175,10 +167,6 @@ pub(crate) fn read_config_contents(
 			Ok((contents, Some(ConfigSource::File(file))))
 		},
 	}
-}
-
-fn running_in_kubernetes() -> bool {
-	std::env::var_os("KUBERNETES_SERVICE_HOST").is_some()
 }
 
 fn default_config_dir() -> anyhow::Result<PathBuf> {
@@ -216,15 +204,11 @@ fn ensure_default_config_file(path: &std::path::Path) -> anyhow::Result<()> {
 	if let Some(parent) = path.parent() {
 		fs_err::create_dir_all(parent)?;
 	}
-	let parent = path
-		.parent()
-		.ok_or_else(|| anyhow::anyhow!("config path has no parent: {}", path.display()))?;
-	fs_err::write(path, default_config_contents(parent))?;
+	fs_err::write(path, default_config_contents())?;
 	Ok(())
 }
 
-fn default_config_contents(dir: &std::path::Path) -> String {
-	let db = dir.join("data.db");
+fn default_config_contents() -> String {
 	let admin = if running_in_official_container() {
 		"  adminAddr: 0.0.0.0:15000\n"
 	} else {
@@ -233,11 +217,9 @@ fn default_config_contents(dir: &std::path::Path) -> String {
 	format!(
 		r#"# yaml-language-server: $schema=https://agentgateway.dev/schema/config
 config:
-{}  database:
-    url: sqlite://{}
+{}
 "#,
 		admin,
-		db.display()
 	)
 }
 

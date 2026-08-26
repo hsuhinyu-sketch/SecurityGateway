@@ -127,6 +127,9 @@ pub async fn run(config: Arc<Config>) -> anyhow::Result<Bound> {
 		ca,
 
 		mcp_state: mcp::App::new(stores.clone(), config.session_encoder.clone()),
+		guardrails: None,
+		vehicle_state: Default::default(),
+		circuit_breakers: None,
 	};
 
 	let gw = proxy::Gateway::new(Arc::new(pi), drain_rx.clone());

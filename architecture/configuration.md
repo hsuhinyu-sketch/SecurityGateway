@@ -41,7 +41,7 @@ This route list can be multiple megabytes, so each time the user changes 1 small
 In agentgateway, the cardinality of protobuf resources mirrors the user API.
 
 * One `HTTPRoute` rule maps to one agentgateway `Route` (rather than a list of all routes)
-* One `Pod` maps to one `Workload` (rather than a list of all endpoints for a service)
+* One workload instance maps to one `Workload` (rather than a list of all endpoints for a service)
 
 This is generally achieved by having resources point up to their parent, rather than the parent containing a list of children.
 For example, a route references which listener its a part of.

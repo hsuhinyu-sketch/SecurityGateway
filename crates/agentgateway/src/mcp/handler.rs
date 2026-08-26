@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 use agent_core::prelude::AssertSize;
 use agent_core::version::BuildInfo;
+use anyhow::anyhow;
 use futures_core::Stream;
+use futures_util::StreamExt;
 use http::StatusCode;
 use http::request::Parts;
 use itertools::Itertools;
@@ -17,6 +19,7 @@ use rmcp::model::{
 };
 use tracing::{debug, warn};
 
+use crate::guardrails::{ResponseContext, ToolCallContext};
 use crate::http::Response;
 use crate::http::sessionpersistence::MCPSession;
 use crate::mcp;
@@ -237,6 +240,79 @@ impl Relay {
 	}
 	pub fn is_multiplexing(&self) -> bool {
 		self.upstreams.is_multiplexing
+	}
+
+	async fn enforce_vehicle_tool_guardrails(
+		&self,
+		r: &JsonRpcRequest<ClientRequest>,
+	) -> Result<(), UpstreamError> {
+		let Some(guardrails) = self.policy_client.inputs.guardrails.as_ref() else {
+			return Ok(());
+		};
+		let ClientRequest::CallToolRequest(ctr) = &r.request else {
+			return Ok(());
+		};
+		let arguments = serde_json::Value::Object(ctr.params.arguments.clone().unwrap_or_default());
+		let ctx = ToolCallContext {
+			name: ctr.params.name.to_string(),
+			arguments,
+		};
+		let decision = guardrails
+			.check_tool_call(&ctx, &self.policy_client.inputs.vehicle_state)
+			.await;
+		if decision.is_allowed() {
+			return Ok(());
+		}
+
+		let _ = decision.to_safety_event("mcp-tool", ctr.params.name.to_string());
+		Err(UpstreamError::InvalidRequest(match &decision {
+			crate::guardrails::GuardrailDecision::Reject { reason, .. }
+			| crate::guardrails::GuardrailDecision::RequireApproval { reason }
+			| crate::guardrails::GuardrailDecision::FailSafe { reason }
+			| crate::guardrails::GuardrailDecision::Mask { reason, .. }
+			| crate::guardrails::GuardrailDecision::Defer { reason } => reason.clone(),
+			crate::guardrails::GuardrailDecision::Allow => {
+				unreachable!("allow decisions are not rejected")
+			},
+		}))
+	}
+
+	fn apply_vehicle_response_guardrails<S>(&self, stream: S) -> Messages
+	where
+		S: Stream<Item = Result<ServerJsonRpcMessage, ClientError>> + Send + 'static,
+	{
+		let Some(guardrails) = self.policy_client.inputs.guardrails.clone() else {
+			return Messages::from_stream(stream);
+		};
+		let vehicle_state = self.policy_client.inputs.vehicle_state.clone();
+		Messages::from_stream(stream.then(move |msg| {
+			let guardrails = guardrails.clone();
+			let vehicle_state = vehicle_state.clone();
+			async move {
+				let msg = msg?;
+				let content = serde_json::to_string(&msg).unwrap_or_default();
+				let ctx = ResponseContext {
+					content,
+					model: "mcp".to_string(),
+				};
+				let decision = guardrails.check_response(&ctx, &vehicle_state).await;
+				if decision.is_allowed() {
+					return Ok(msg);
+				}
+				let _ = decision.to_safety_event("mcp-response", "mcp");
+				let reason = match &decision {
+					crate::guardrails::GuardrailDecision::Reject { reason, .. }
+					| crate::guardrails::GuardrailDecision::RequireApproval { reason }
+					| crate::guardrails::GuardrailDecision::FailSafe { reason }
+					| crate::guardrails::GuardrailDecision::Mask { reason, .. }
+					| crate::guardrails::GuardrailDecision::Defer { reason } => reason.clone(),
+					crate::guardrails::GuardrailDecision::Allow => {
+						unreachable!("allow decisions are not rejected")
+					},
+				};
+				Err(ClientError::new(anyhow!(reason)))
+			}
+		}))
 	}
 
 	fn build_guardrails_ctx(
@@ -590,6 +666,7 @@ impl Relay {
 		service_name: &str,
 		mcp_log: Option<AsyncLog<MCPInfo>>,
 	) -> Result<Response, UpstreamError> {
+		self.enforce_vehicle_tool_guardrails(&r).await?;
 		let id = r.id.clone();
 		let Ok(us) = self.upstreams.get(service_name) else {
 			return Err(UpstreamError::InvalidRequest(format!(
@@ -601,6 +678,7 @@ impl Relay {
 			service_name,
 			Box::pin(us.generic_stream(r, &ctx).assert_size::<{ 3 * 1024 }>()).await?,
 		);
+		let stream = self.apply_vehicle_response_guardrails(stream);
 
 		match guardrails {
 			Some(guardrails) => messages_to_response(
@@ -711,6 +789,7 @@ impl Relay {
 		}
 
 		let ms = mergestream::MergeStream::new_without_merge(streams, self.upstreams.failure_mode);
+		let ms = self.apply_vehicle_response_guardrails(ms);
 		messages_to_response(RequestId::Number(0), ms, None, ctx_downstream_modern(&ctx))
 	}
 
@@ -730,6 +809,7 @@ impl Relay {
 		merge: Box<MergeFn>,
 		target_names: Option<Vec<String>>,
 	) -> Result<Response, UpstreamError> {
+		self.enforce_vehicle_tool_guardrails(&r).await?;
 		let id = r.id.clone();
 		let subscription_id = if matches!(&r.request, ClientRequest::SubscriptionsListenRequest(_)) {
 			Some(id.clone())

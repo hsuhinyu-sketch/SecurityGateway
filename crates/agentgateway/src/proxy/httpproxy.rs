@@ -21,6 +21,7 @@ use types::discovery::*;
 
 use crate::cel::{BackendContext, RequestTime};
 use crate::client::{ApplicationTransport, HboneHeaders, HboneSourceRole, Transport};
+use crate::guardrails::{RequestContext, request_context_from_http_request};
 use crate::http::backendtls::BackendTLS;
 use crate::http::buffer::Buffer;
 use crate::http::ext_proc::{ExtProcRequest, InferenceRoutingDestinationMode};
@@ -877,6 +878,12 @@ impl HTTPProxy {
 		.snapshot_on_err(log, &mut req)?;
 		dtrace::snapshot!(Request, "route policies", &req);
 
+		let (guardrails_ctx, guardrails_key) = request_context_from_http_request(&req);
+		self
+			.enforce_request_guardrails(guardrails_ctx, guardrails_key)
+			.await
+			.snapshot_on_err(log, &mut req)?;
+
 		let selected_backend_ref = selected_route_chain
 			.backend
 			.ok_or(ProxyError::NoValidBackends)
@@ -1368,6 +1375,28 @@ impl HTTPProxy {
 		maybe_set_grpc_status(&log.grpc_status, resp.headers());
 
 		Ok(resp)
+	}
+
+	/// Enforce request-level vehicle guardrails before backend dispatch.
+	async fn enforce_request_guardrails(
+		&self,
+		ctx: RequestContext,
+		key: String,
+	) -> Result<(), ProxyResponse> {
+		let Some(guardrails) = self.inputs.guardrails.as_ref() else {
+			return Ok(());
+		};
+		let decision = guardrails
+			.check_request(&ctx, &self.inputs.vehicle_state)
+			.await;
+		if decision.is_allowed() {
+			return Ok(());
+		}
+
+		let _ = decision.to_safety_event("http-route", key);
+		Err(ProxyResponse::DirectResponse(Box::new(
+			decision.to_http_response(),
+		)))
 	}
 
 	fn policy_client(&self) -> PolicyClient {

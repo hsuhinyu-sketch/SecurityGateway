@@ -935,6 +935,9 @@ mod tests {
 			upstream: client,
 			ca: None,
 			mcp_state: crate::mcp::App::new(stores, encoder),
+			guardrails: None,
+			vehicle_state: Default::default(),
+			circuit_breakers: None,
 		})
 	}
 

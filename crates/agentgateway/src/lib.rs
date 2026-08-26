@@ -23,11 +23,14 @@ use crate::types::discovery::Identity;
 pub mod a2a;
 pub mod agentcore;
 pub mod app;
+#[cfg(feature = "providers-aws")]
 pub mod aws;
 pub mod cel;
+pub mod circuit;
 pub mod client;
 pub mod config;
 pub mod control;
+pub mod guardrails;
 pub mod http;
 pub mod json;
 pub mod llm;
@@ -685,7 +688,6 @@ impl ConfigSource {
 	}
 }
 
-#[derive(Debug, Clone)]
 pub struct ProxyInputs {
 	pub cfg: Arc<Config>,
 	pub stores: Stores,
@@ -698,6 +700,53 @@ pub struct ProxyInputs {
 	pub admin: Option<management::admin::AdminService>,
 	pub mcp_state: mcp::App,
 	pub ca: Option<Arc<CaClient>>,
+
+	/// Optional vehicle guardrails. When set, request-level guardrails are
+	/// enforced in the core HTTP proxy pipeline.
+	pub guardrails: Option<Arc<dyn crate::guardrails::VehicleGuardrails>>,
+	/// Current vehicle state used by vehicle guardrails.
+	pub vehicle_state: crate::guardrails::VehicleState,
+	/// Optional circuit breaker registry. Used by guardrails to open breakers.
+	pub circuit_breakers: Option<Arc<crate::circuit::CircuitBreakerRegistry>>,
+}
+
+impl Clone for ProxyInputs {
+	fn clone(&self) -> Self {
+		Self {
+			cfg: self.cfg.clone(),
+			stores: self.stores.clone(),
+			upstream: self.upstream.clone(),
+			metrics: self.metrics.clone(),
+			model_catalog: self.model_catalog.clone(),
+			admin: self.admin.clone(),
+			mcp_state: self.mcp_state.clone(),
+			ca: self.ca.clone(),
+			guardrails: self.guardrails.clone(),
+			vehicle_state: self.vehicle_state.clone(),
+			circuit_breakers: self.circuit_breakers.clone(),
+		}
+	}
+}
+
+impl std::fmt::Debug for ProxyInputs {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("ProxyInputs")
+			.field("cfg", &self.cfg)
+			.field("stores", &self.stores)
+			.field("upstream", &self.upstream)
+			.field("metrics", &self.metrics)
+			.field("model_catalog", &self.model_catalog)
+			.field("admin", &self.admin)
+			.field("mcp_state", &self.mcp_state)
+			.field("ca", &self.ca)
+			.field(
+				"guardrails",
+				&self.guardrails.as_ref().map(|_| "dyn VehicleGuardrails"),
+			)
+			.field("vehicle_state", &self.vehicle_state)
+			.field("circuit_breakers", &self.circuit_breakers)
+			.finish()
+	}
 }
 
 impl ProxyInputs {
@@ -724,6 +773,9 @@ impl ProxyInputs {
 			admin: None,
 			mcp_state,
 			ca,
+			guardrails: None,
+			vehicle_state: Default::default(),
+			circuit_breakers: None,
 		}
 	}
 }

@@ -51,3 +51,8 @@ The `prompt-enrichment` example shows how to append or preprend prompts to agent
 
 The `standalone-epp` example shows the v1 local config shape for running agentgateway as the sidecar proxy
 next to a standalone EPP deployment on Kubernetes.
+
+### [Embedded](embedded/README.md)
+
+The `embedded` example shows a minimal low-overhead configuration for embedded Linux
+or resource-constrained environments.

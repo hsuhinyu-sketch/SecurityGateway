@@ -289,7 +289,7 @@ pub struct SourceContext {
 	pub tls: Option<crate::transport::tls::TlsInfo>,
 	/// The workload context of the downstream connection, resolved from the
 	/// workload discovery store by source IP. Available when the source pod is
-	/// known to the controller's workload discovery store.
+	/// known to the workload discovery store.
 	///
 	/// Fields are nested under `unverified` to signal that they are derived
 	/// from the source IP (not cryptographically authenticated). Policy

@@ -44,6 +44,7 @@ use policy::streaming_guardrails::GuardedSseBody;
 pub use types::SimpleChatCompletionMessage;
 
 use crate::cel::{Executor, LLMContext, RequestSnapshot};
+use crate::guardrails::{ResponseContext, VehicleStreamingResponseEvaluator};
 use crate::proxy::dtrace;
 use crate::store;
 
@@ -1419,6 +1420,21 @@ impl AIProvider {
 			(llm_resp, Bytes::copy_from_slice(&body))
 		};
 
+		if let Some(guardrails) = client.inputs.guardrails.as_ref() {
+			let content = String::from_utf8_lossy(&body).to_string();
+			let ctx = ResponseContext {
+				content,
+				model: req.request_model.to_string(),
+			};
+			let decision = guardrails
+				.check_response(&ctx, &client.inputs.vehicle_state)
+				.await;
+			if !decision.is_allowed() {
+				let _ = decision.to_safety_event("llm-model", req.request_model.to_string());
+				return Ok(decision.to_http_response());
+			}
+		}
+
 		let body = if let Some(encoding) = encoding {
 			parts
 				.headers
@@ -1765,7 +1781,7 @@ impl AIProvider {
 		// SSE output, not raw upstream bytes. Applying them before translation silently
 		// breaks Bedrock (AWS Event Stream is binary, not SSE) and any provider whose
 		// wire format differs from SSE. Detect paths are raw pass-throughs; skip them.
-		let evaluators = if response_policies.streaming_prompt_guard_enabled
+		let mut evaluators = if response_policies.streaming_prompt_guard_enabled
 			&& !response_policies.prompt_guard.is_empty()
 			&& !matches!(input_format, InputFormat::Detect)
 		{
@@ -1779,6 +1795,14 @@ impl AIProvider {
 		} else {
 			vec![]
 		};
+
+		if let Some(guardrails) = client.inputs.guardrails.clone() {
+			evaluators.push(Box::new(VehicleStreamingResponseEvaluator::new(
+				guardrails,
+				model.to_string(),
+				client.inputs.vehicle_state.clone(),
+			)));
+		}
 
 		let logger = AmendOnDrop::new(log, response_policies, req_snapshot, model_catalog);
 		let stream_format = match self {
