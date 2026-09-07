@@ -1,36 +1,33 @@
 # SecurityGateway
 
-SecurityGateway is a standalone, AI-native gateway for securing and governing
-agent-to-model, agent-to-tool, and agent-to-agent traffic.
+Minimal Rust-first security gateway PoC.
 
-## Capabilities
+## Current scope
 
-- Unified LLM routing through an OpenAI-compatible API.
-- MCP and A2A connectivity for tools, services, and agents.
-- Authentication, authorization, rate limiting, TLS, guardrails, and
-  OpenTelemetry observability.
-- Local YAML configuration with runtime reload support.
+- Gateway: reuse AgentGateway for LLM and MCP traffic.
+- Security engine: normalize requests and return ALLOW / DENY decisions.
+- Policy: minimal subject/action/resource matching.
+- Audit: create security events from decisions.
 
-## Architecture
-
-The standalone runtime loads local YAML configuration, normalizes it into the
-runtime store, and serves traffic through the proxy layer:
+## Core crates
 
 ```text
-YAML -> runtime -> store -> proxy
+crates/contracts
+crates/policy
+crates/security-engine
+crates/audit-core
+crates/gateway-adapter
+crates/agentgateway
+crates/agentgateway-app
 ```
-
-See [architecture/standalone-runtime.md](architecture/standalone-runtime.md)
-for module responsibilities and [examples/](examples/) for configuration
-samples.
 
 ## Build and test
 
 ```bash
-cargo check -p agentgateway-app
-cargo test -p agentgateway
+cargo check -p security-contracts -p security-policy -p security-engine -p audit-core -p gateway-adapter -p agentgateway-app
+cargo test -p security-engine -p security-policy -p audit-core -p gateway-adapter
 ```
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
