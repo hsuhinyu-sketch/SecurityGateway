@@ -7,6 +7,11 @@ rmcp = { git = "https://github.com/howardjohn/rust-sdk", rev = "7366ffc42beb89f2
 [workspace]
 resolver = "2"
 members = [
+    "crates/contracts",
+    "crates/policy",
+    "crates/security-engine",
+    "crates/audit-core",
+    "crates/gateway-adapter",
     "crates/agentgateway",
     "crates/agentgateway-app",
     "crates/cel-fork/cel",
