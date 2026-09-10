@@ -1,0 +1,22 @@
+[package]
+name = "gateway-composition"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["gateway-full"]
+gateway-llm = []
+gateway-a2a = []
+gateway-mcp = []
+inference-routing = ["gateway-llm"]
+security-s1 = []
+gateway-full = [
+    "gateway-llm",
+    "gateway-a2a",
+    "gateway-mcp",
+    "inference-routing",
+    "security-s1",
+]

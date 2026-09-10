@@ -1,0 +1,48 @@
+[package]
+name = "ai-gateway-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ai-gateway"
+path = "src/main.rs"
+bench = false
+
+[features]
+default = [
+	"gateway-full",
+	"runtime-base",
+	"jemalloc",
+	"mimalloc",
+	"tls-aws-lc",
+]
+runtime-base = ["agentgateway-app/runtime-base"]
+gateway-llm = ["agentgateway-app/gateway-llm"]
+gateway-a2a = ["agentgateway-app/gateway-a2a"]
+gateway-mcp = ["agentgateway-app/gateway-mcp"]
+inference-routing = ["agentgateway-app/inference-routing", "gateway-llm"]
+security-s1 = ["agentgateway-app/security-s1"]
+gateway-full = [
+	"gateway-llm",
+	"gateway-a2a",
+	"gateway-mcp",
+	"inference-routing",
+	"security-s1",
+]
+jemalloc = ["agentgateway-app/jemalloc"]
+mimalloc = ["agentgateway-app/mimalloc"]
+tls-aws-lc = ["agentgateway-app/tls-aws-lc"]
+tls-openssl = ["agentgateway-app/tls-openssl"]
+providers-aws = ["agentgateway-app/providers-aws"]
+providers-azure = ["agentgateway-app/providers-azure"]
+providers-gcp = ["agentgateway-app/providers-gcp"]
+database = ["agentgateway-app/database"]
+telemetry-otlp = ["agentgateway-app/telemetry-otlp"]
+schema = ["agentgateway-app/schema"]
+
+[dependencies]
+agentgateway-app = { path = "../../agentgateway-app", default-features = false }
+anyhow.workspace = true

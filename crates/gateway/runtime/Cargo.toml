@@ -1,0 +1,42 @@
+[package]
+name = "ai-gateway-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = [
+	"gateway-full",
+	"runtime-base",
+	"jemalloc",
+	"mimalloc",
+	"tls-aws-lc",
+]
+runtime-base = ["agentgateway/runtime-base"]
+gateway-llm = ["agentgateway/gateway-llm"]
+gateway-a2a = ["agentgateway/gateway-a2a"]
+gateway-mcp = ["agentgateway/gateway-mcp"]
+inference-routing = ["agentgateway/inference-routing", "gateway-llm"]
+security-s1 = ["agentgateway/security-s1"]
+gateway-full = [
+	"gateway-llm",
+	"gateway-a2a",
+	"gateway-mcp",
+	"inference-routing",
+	"security-s1",
+]
+jemalloc = ["agentgateway/jemalloc"]
+mimalloc = ["agentgateway/mimalloc"]
+tls-aws-lc = ["agentgateway/tls-aws-lc"]
+tls-openssl = ["agentgateway/tls-openssl"]
+providers-aws = ["agentgateway/providers-aws"]
+providers-azure = ["agentgateway/providers-azure"]
+providers-gcp = ["agentgateway/providers-gcp"]
+database = ["agentgateway/database"]
+telemetry-otlp = ["agentgateway/telemetry-otlp"]
+schema = ["agentgateway/schema"]
+
+[dependencies]
+agentgateway = { path = "../../agentgateway", default-features = false }
